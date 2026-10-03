@@ -618,6 +618,21 @@ button:disabled {
   margin-top: 8px;
 }
 
+.sheet-body .checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  cursor: pointer;
+}
+
+.checkbox-field input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .import-button {
   width: 100%;
   margin-top: 28px;

@@ -120,6 +120,28 @@ function parseRows(text: string, separator: string): string[][] {
   return rows
 }
 
+/// Drops cards whose front and back both match an existing card, or an
+/// earlier card in the list. Matching ignores case and differences in
+/// whitespace.
+export function removeDuplicates(
+  cards: ParsedCard[],
+  existing: { frontText: string; backText: string }[],
+): { cards: ParsedCard[]; duplicates: number } {
+  const key = (front: string, back: string) => JSON.stringify([normalize(front), normalize(back)])
+  const seen = new Set(existing.map((c) => key(c.frontText, c.backText)))
+  const unique = cards.filter((c) => {
+    const k = key(c.front, c.back)
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+  return { cards: unique, duplicates: cards.length - unique.length }
+}
+
+function normalize(text: string) {
+  return text.trim().replace(/\s+/g, ' ').toLocaleLowerCase()
+}
+
 /// Deck name suggested from an imported file, e.g. "Tagalog.csv" -> "Tagalog".
 export function deckNameFromFile(fileName: string) {
   return fileName.replace(/\.(csv|tsv|txt)$/i, '').trim() || 'Imported Deck'
