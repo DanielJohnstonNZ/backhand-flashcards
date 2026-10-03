@@ -5,8 +5,8 @@ import { DeckList } from './components/DeckList'
 import { DeckDetail } from './components/DeckDetail'
 import { Review } from './components/Review'
 
-/// Sidebar + detail on wide screens; one pane at a time on phones, where the
-/// deck list is the "root" and a deck pushes over it.
+/// The deck grid is the home page; opening a deck replaces it with the deck's
+/// page.
 export function App() {
   const snap = useStore()
   const route = useRoute()
@@ -21,16 +21,9 @@ export function App() {
   const reviewing = deck && route.reviewing && cards.length > 0
 
   return (
-    <div className={`app ${deck ? 'has-selection' : ''}`}>
-      <div className="split" inert={reviewing || undefined}>
-        <DeckList selectedId={deck?.id ?? null} />
-        {deck ? (
-          <DeckDetail key={deck.id} deck={deck} />
-        ) : (
-          <main className="detail placeholder">
-            <p className="secondary">{snap.decks.length ? 'Select a deck' : ''}</p>
-          </main>
-        )}
+    <div className="app">
+      <div className="page" inert={reviewing || undefined}>
+        {deck ? <DeckDetail key={deck.id} deck={deck} /> : <DeckList />}
       </div>
       {reviewing && <Review key={deck.id} deck={deck} cards={cards} onExit={() => goBack({ deckId: deck.id })} />}
     </div>

@@ -11,7 +11,7 @@ type Dialog =
   | { kind: 'delete'; deck: Deck }
   | { kind: 'import'; pending: PendingImport }
 
-export function DeckList({ selectedId }: { selectedId: string | null }) {
+export function DeckList() {
   const snap = useStore()
   const [dialog, setDialog] = useState<Dialog | null>(null)
   const [menuFor, setMenuFor] = useState<string | null>(null)
@@ -26,44 +26,31 @@ export function DeckList({ selectedId }: { selectedId: string | null }) {
   }
 
   return (
-    <nav className="sidebar" aria-label="Decks">
+    <main className="home">
       <header className="bar">
         <h1>Decks</h1>
-        <button className="icon-button" aria-label="Import CSV" title="Import CSV" onClick={() => startImport()}>
-          <ImportIcon />
-        </button>
-        <button className="icon-button" aria-label="New Deck" title="New Deck" onClick={() => setDialog({ kind: 'new' })}>
-          <PlusIcon />
-        </button>
       </header>
 
-      {snap.decks.length === 0 ? (
-        <div className="empty">
-          <h2>No Decks</h2>
-          <p>Create a deck to start adding cards, or import cards from a CSV file.</p>
-          <button className="button prominent" onClick={() => setDialog({ kind: 'new' })}>
-            New Deck
-          </button>
-          <button className="button" onClick={() => startImport()}>
-            Import CSV
-          </button>
-        </div>
-      ) : (
-        <ul className="list">
+      <div className="home-content">
+        {snap.decks.length === 0 && (
+          <p className="secondary home-hint">Create a deck to start adding cards, or import cards from a CSV file.</p>
+        )}
+        <ul className="tile-grid">
           {snap.decks.map((deck) => {
             const cards = cardsInDeck(snap, deck.id)
             return (
-              <li key={deck.id} className={`deck-row ${deck.id === selectedId ? 'selected' : ''}`}>
+              <li key={deck.id} className="tile deck-tile">
                 <a
                   href={`#/deck/${deck.id}`}
-                  aria-current={deck.id === selectedId ? 'page' : undefined}
                   onContextMenu={(e) => {
                     e.preventDefault()
                     setMenuFor(deck.id)
                   }}
                 >
-                  <span className="deck-name">{deck.name}</span>
-                  <span className="count">{cards.length}</span>
+                  <span className="tile-title">{deck.name}</span>
+                  <span className="tile-meta">
+                    {cards.length} {cards.length === 1 ? 'card' : 'cards'}
+                  </span>
                 </a>
                 <button
                   className="icon-button more"
@@ -94,11 +81,23 @@ export function DeckList({ selectedId }: { selectedId: string | null }) {
               </li>
             )
           })}
+          <li>
+            <button className="add-tile" onClick={() => setDialog({ kind: 'new' })}>
+              <PlusIcon />
+              New Deck
+            </button>
+          </li>
         </ul>
-      )}
+      </div>
 
       {dialog?.kind === 'new' && (
-        <NamePrompt title="New Deck" confirmLabel="Create" onSubmit={create} onClose={() => setDialog(null)} />
+        <NamePrompt title="New Deck" confirmLabel="Create" onSubmit={create} onClose={() => setDialog(null)}>
+          <div className="divider">or</div>
+          <button type="button" className="button import-option" onClick={() => startImport()}>
+            <ImportIcon />
+            Import from CSV…
+          </button>
+        </NamePrompt>
       )}
       {dialog?.kind === 'rename' && (
         <NamePrompt
@@ -115,19 +114,18 @@ export function DeckList({ selectedId }: { selectedId: string | null }) {
           message={`This deletes the deck and its ${cardsInDeck(snap, dialog.deck.id).length} cards from this browser. It can't be undone.`}
           confirmLabel="Delete"
           onConfirm={() => {
-            if (dialog.deck.id === selectedId) navigate({})
             deleteDeck(dialog.deck.id)
           }}
           onClose={() => setDialog(null)}
         />
       )}
       {dialog?.kind === 'import' && <ImportDialog pending={dialog.pending} onClose={() => setDialog(null)} />}
-    </nav>
+    </main>
   )
 }
 
 /// Popup menu that closes on any click outside it or on Escape.
-function Menu({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+export function Menu({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     ref.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
@@ -165,7 +163,7 @@ function ImportIcon() {
   )
 }
 
-function MoreIcon() {
+export function MoreIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor">
       <circle cx="5" cy="12" r="1.8" />

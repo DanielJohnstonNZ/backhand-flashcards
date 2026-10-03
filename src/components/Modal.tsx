@@ -45,6 +45,17 @@ export function Modal({
   )
 }
 
+/// The ✕ in a dialog's header.
+export function CloseButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="icon-button" aria-label="Close" title="Close" onClick={onClick}>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <path d="M6 6l12 12M18 6L6 18" />
+      </svg>
+    </button>
+  )
+}
+
 /// Single-field prompt, used for creating and renaming decks.
 export function NamePrompt({
   title,
@@ -52,12 +63,15 @@ export function NamePrompt({
   confirmLabel,
   onSubmit,
   onClose,
+  children,
 }: {
   title: string
   initialValue?: string
   confirmLabel: string
   onSubmit: (name: string) => void
   onClose: () => void
+  /// Extra options shown below the buttons.
+  children?: ReactNode
 }) {
   const [value, setValue] = useState(initialValue)
   const name = value.trim()
@@ -90,6 +104,7 @@ export function NamePrompt({
           </button>
         </div>
       </form>
+      {children}
     </Modal>
   )
 }

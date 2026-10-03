@@ -1,6 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
 import { addCard, deleteCard, editCard, type Card, type Deck } from '../db'
-import { Confirm, Modal } from './Modal'
+import { CloseButton, Confirm, Modal } from './Modal'
 
 /// Creates a new card (when `card` is null) or edits an existing one.
 ///
@@ -79,13 +79,8 @@ export function CardEditor({ deck, card, onClose }: { deck: Deck; card: Card | n
         }}
       >
         <header className="sheet-bar">
-          <button type="button" className="text-button" onClick={onClose}>
-            Cancel
-          </button>
           <h2>{isNew ? 'New Card' : 'Edit Card'}</h2>
-          <button type="submit" className="text-button strong" disabled={!canSave}>
-            {isNew ? 'Add' : 'Save'}
-          </button>
+          <CloseButton onClick={onClose} />
         </header>
 
         <div className="sheet-body">
@@ -118,11 +113,23 @@ export function CardEditor({ deck, card, onClose }: { deck: Deck; card: Card | n
             onKeyDown={(e) => onKeyDown(e, 'back')}
           />
 
-          {isNew ? (
-            <>
-              <button type="button" className="button grouped-button" disabled={!canSave} onClick={saveAndContinue}>
-                Save and Add Another
+          <div className="editor-actions">
+            {isNew ? (
+              <button type="button" className="button" disabled={!canSave} onClick={saveAndContinue}>
+                Add Another
               </button>
+            ) : (
+              <button type="button" className="button destructive" onClick={() => setConfirmingDelete(true)}>
+                Delete
+              </button>
+            )}
+            <button type="submit" className="button prominent" disabled={!canSave}>
+              {isNew ? 'Add Card' : 'Save'}
+            </button>
+          </div>
+
+          {isNew && (
+            <>
               <p className="footnote">
                 Press Enter or Tab after the back to save and start the next card. Shift-Enter adds a line break.
               </p>
@@ -132,10 +139,6 @@ export function CardEditor({ deck, card, onClose }: { deck: Deck; card: Card | n
                 </p>
               )}
             </>
-          ) : (
-            <button type="button" className="button grouped-button destructive" onClick={() => setConfirmingDelete(true)}>
-              Delete Card
-            </button>
           )}
         </div>
       </form>

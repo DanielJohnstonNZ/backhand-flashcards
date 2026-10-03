@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { addCards, addDeck, cardsInDeck, useStore } from '../db'
 import { deckNameFromFile, parseCards, removeDuplicates, type ParseResult } from '../csv'
 import { navigate } from '../route'
-import { Modal } from './Modal'
+import { CloseButton, Modal } from './Modal'
 
 const NEW_DECK = ''
 
@@ -43,9 +43,9 @@ export function ImportDialog({ pending, onClose }: { pending: PendingImport; onC
   const [isImporting, setIsImporting] = useState(false)
 
   const isNewDeck = deckId === NEW_DECK
-  const { cards: toImport, duplicates } = skipDuplicates
-    ? removeDuplicates(cards, isNewDeck ? [] : cardsInDeck(snap, deckId))
-    : { cards, duplicates: 0 }
+  // A new deck has nothing to clash with, so it takes the file as is.
+  const { cards: toImport, duplicates } =
+    skipDuplicates && !isNewDeck ? removeDuplicates(cards, cardsInDeck(snap, deckId)) : { cards, duplicates: 0 }
   const canImport = toImport.length > 0 && (!isNewDeck || newName.trim() !== '') && !isImporting
 
   async function submit(e: FormEvent) {
@@ -64,13 +64,8 @@ export function ImportDialog({ pending, onClose }: { pending: PendingImport; onC
     <Modal title="Import Cards" onClose={onClose} className="editor">
       <form onSubmit={submit}>
         <header className="sheet-bar">
-          <button type="button" className="text-button" onClick={onClose}>
-            Cancel
-          </button>
           <h2>Import Cards</h2>
-          <button type="submit" className="text-button strong" disabled={!canImport}>
-            Import
-          </button>
+          <CloseButton onClick={onClose} />
         </header>
 
         <div className="sheet-body">
@@ -141,19 +136,23 @@ export function ImportDialog({ pending, onClose }: { pending: PendingImport; onC
                 </>
               )}
 
-              <label className="field checkbox-field">
-                <input type="checkbox" checked={skipDuplicates} onChange={(e) => setSkipDuplicates(e.target.checked)} />
-                Skip duplicates
-              </label>
-              <p className="footnote" role="status">
-                {!skipDuplicates
-                  ? 'Every card in the file will be added.'
-                  : `${
-                      duplicates > 0
-                        ? `${plural(duplicates, 'duplicate')} will be skipped${isNewDeck ? '' : ' (already in this deck or repeated in the file)'}.`
-                        : 'No duplicates found.'
-                    } Cards match when the front and back are the same, ignoring case and spacing.`}
-              </p>
+              {!isNewDeck && (
+                <>
+                  <label className="field checkbox-field">
+                    <input type="checkbox" checked={skipDuplicates} onChange={(e) => setSkipDuplicates(e.target.checked)} />
+                    Skip duplicates
+                  </label>
+                  <p className="footnote" role="status">
+                    {!skipDuplicates
+                      ? 'Every card in the file will be added.'
+                      : `${
+                          duplicates > 0
+                            ? `${plural(duplicates, 'duplicate')} will be skipped (already in this deck or repeated in the file).`
+                            : 'No duplicates found.'
+                        } Cards match when the front and back are the same, ignoring case and spacing.`}
+                  </p>
+                </>
+              )}
 
               <button type="submit" className="button prominent large import-button" disabled={!canImport}>
                 {toImport.length ? `Import ${plural(toImport.length, 'Card')}` : 'Nothing New to Import'}
