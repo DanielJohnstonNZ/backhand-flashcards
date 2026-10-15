@@ -607,12 +607,23 @@ button:disabled {
 }
 
 .deck-actions {
+  position: relative;
   display: flex;
   gap: 8px;
 }
 
 .deck-actions .button {
   padding-inline: 16px 20px;
+}
+
+.deck-actions .more-button {
+  width: 40px;
+  padding: 0;
+}
+
+.deck-actions .menu {
+  top: calc(100% + 4px);
+  right: 0;
 }
 
 .section-header {
@@ -855,9 +866,54 @@ button:disabled {
   accent-color: var(--primary);
 }
 
-.import-button {
+.import-button,
+.done-button {
   width: 100%;
   margin-top: 24px;
+}
+
+.option-group {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.radio-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.radio-option + .radio-option {
+  margin-top: 8px;
+}
+
+.radio-option:has(input:checked) {
+  border-color: var(--ring);
+  background: var(--muted);
+}
+
+.radio-option input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--primary);
+}
+
+.radio-label {
+  display: block;
+  font-weight: 500;
+}
+
+.radio-option .footnote {
+  display: block;
+  margin: 2px 0 0;
 }
 
 .footnote {

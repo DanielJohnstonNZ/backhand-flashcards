@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { cardsInDeck, deleteCard, useStore, type Card, type Deck } from '../db'
+import { cardsInDeck, DEFAULT_REVIEW_OPTIONS, deleteCard, useStore, type Card, type Deck } from '../db'
 import { navigate } from '../route'
 import { CardEditor } from './CardEditor'
 import { Menu, MoreIcon, PlusIcon } from './DeckList'
 import { Confirm } from './Modal'
+import { ReviewOptionsDialog } from './ReviewOptionsDialog'
+import { dueCards } from '../schedule'
 
 type Editing = { card: Card | null } | null
 
@@ -13,6 +15,11 @@ export function DeckDetail({ deck }: { deck: Deck }) {
   const [editing, setEditing] = useState<Editing>(null)
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<Card | null>(null)
+  const [deckMenuOpen, setDeckMenuOpen] = useState(false)
+  const [editingOptions, setEditingOptions] = useState(false)
+  const dueCount = dueCards(cards).length
+  const isSpaced = (deck.reviewOptions ?? DEFAULT_REVIEW_OPTIONS).order === 'spaced'
+  const canReview = isSpaced ? dueCount > 0 : cards.length > 0
 
   return (
     <main className="detail">
@@ -31,16 +38,14 @@ export function DeckDetail({ deck }: { deck: Deck }) {
             <h1 className="large-title">{deck.name}</h1>
             <p className="secondary">
               {cards.length} {cards.length === 1 ? 'card' : 'cards'}
+              {cards.length > 0 && ` · ${dueCount} due`}
             </p>
           </div>
           <div className="deck-actions">
-            <button className="button large" onClick={() => setEditing({ card: null })}>
-              <PlusIcon />
-              New Card
-            </button>
             <button
               className="button prominent large"
-              disabled={cards.length === 0}
+              disabled={!canReview}
+              title={cards.length > 0 && !canReview ? 'No cards are due' : undefined}
               onClick={() => navigate({ deckId: deck.id, reviewing: true })}
             >
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor">
@@ -48,6 +53,25 @@ export function DeckDetail({ deck }: { deck: Deck }) {
               </svg>
               Review
             </button>
+            <button
+              className="button large more-button"
+              aria-label="More deck actions"
+              aria-haspopup="menu"
+              aria-expanded={deckMenuOpen}
+              onClick={() => setDeckMenuOpen(!deckMenuOpen)}
+            >
+              <MoreIcon />
+            </button>
+            {deckMenuOpen && (
+              <Menu onClose={() => setDeckMenuOpen(false)}>
+                <button role="menuitem" onClick={() => setEditing({ card: null })}>
+                  New Card
+                </button>
+                <button role="menuitem" onClick={() => setEditingOptions(true)}>
+                  Review Options…
+                </button>
+              </Menu>
+            )}
           </div>
         </div>
 
@@ -97,6 +121,7 @@ export function DeckDetail({ deck }: { deck: Deck }) {
       </div>
 
       {editing && <CardEditor deck={deck} card={editing.card} onClose={() => setEditing(null)} />}
+      {editingOptions && <ReviewOptionsDialog deck={deck} onClose={() => setEditingOptions(false)} />}
       {deleting && (
         <Confirm
           title="Delete this card?"

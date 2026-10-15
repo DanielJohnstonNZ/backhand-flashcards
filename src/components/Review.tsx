@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { recordReview, type Card, type Deck } from '../db'
+import { DEFAULT_REVIEW_OPTIONS, recordReview, type Card, type Deck, type ReviewOrder } from '../db'
+import { dueCards } from '../schedule'
 
 function shuffled<T>(items: T[]): T[] {
   const result = [...items]
@@ -10,14 +11,31 @@ function shuffled<T>(items: T[]): T[] {
   return result
 }
 
-/// Simple review session: shuffle the deck, show each front, flip to reveal
-/// the back, and mark it as got-it or missed. At the end, offer to run the
-/// missed cards again.
+function ordered(cards: Card[], order: ReviewOrder): Card[] {
+  switch (order) {
+    case 'spaced':
+      return dueCards(cards)
+    case 'random':
+      return shuffled(cards)
+    case 'deck':
+      return cards
+  }
+}
+
+/// Review session: queue the cards in the deck's chosen order, show each
+/// front, flip to reveal the back, and mark it as got-it or missed. At the
+/// end, offer to run the missed cards again.
+///
+/// The session's cards are fixed when it starts, so rescheduling a card as
+/// it's answered doesn't change what's left. Re-runs from the summary use the
+/// same cards, shuffled unless the deck is reviewed in deck order.
 ///
 /// Keys: Space flips, Left = Missed, Right = Got It, Escape ends,
 /// Enter picks the highlighted action on the summary.
 export function Review({ deck, cards, onExit }: { deck: Deck; cards: Card[]; onExit: () => void }) {
-  const [queue, setQueue] = useState(() => shuffled(cards))
+  const order = (deck.reviewOptions ?? DEFAULT_REVIEW_OPTIONS).order
+  const [sessionCards] = useState(() => ordered(cards, order))
+  const [queue, setQueue] = useState(sessionCards)
   const [position, setPosition] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
   const [missed, setMissed] = useState<Card[]>([])
@@ -41,7 +59,7 @@ export function Review({ deck, cards, onExit }: { deck: Deck; cards: Card[]; onE
   }
 
   function restart(with_: Card[]) {
-    setQueue(shuffled(with_))
+    setQueue(order === 'deck' ? with_ : shuffled(with_))
     setPosition(0)
     setIsFlipped(false)
     setMissed([])
@@ -66,11 +84,20 @@ export function Review({ deck, cards, onExit }: { deck: Deck; cards: Card[]; onE
       answer(true)
     }
   }
+  // Opening a review link with nothing due (e.g. reloading a finished
+  // spaced session) goes back to the deck.
+  const isEmpty = sessionCards.length === 0
+  useEffect(() => {
+    if (isEmpty) onExit()
+  }, [isEmpty])
+
   useEffect(() => {
     const listener = (e: KeyboardEvent) => keyHandler.current(e)
     window.addEventListener('keydown', listener)
     return () => window.removeEventListener('keydown', listener)
   }, [])
+
+  if (isEmpty) return null
 
   return (
     <div className="review" role="dialog" aria-modal="true" aria-label={`Review ${deck.name}`}>
@@ -88,7 +115,7 @@ export function Review({ deck, cards, onExit }: { deck: Deck; cards: Card[]; onE
           correctCount={correctCount}
           missed={missed}
           onReviewMissed={() => restart(missed)}
-          onReviewAll={() => restart(cards)}
+          onReviewAll={() => restart(sessionCards)}
           onDone={onExit}
         />
       ) : (

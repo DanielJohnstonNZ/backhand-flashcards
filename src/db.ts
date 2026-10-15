@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import { useSyncExternalStore } from 'react'
+import { DEFAULT_EASE, schedule } from './schedule'
 
 /// Everything lives in IndexedDB in this browser. There is no server.
 ///
@@ -11,7 +12,17 @@ export interface Deck {
   id: string
   name: string
   createdAt: number
+  /// Options from the last review session started on this deck.
+  reviewOptions?: ReviewOptions
 }
+
+export type ReviewOrder = 'spaced' | 'random' | 'deck'
+
+export interface ReviewOptions {
+  order: ReviewOrder
+}
+
+export const DEFAULT_REVIEW_OPTIONS: ReviewOptions = { order: 'spaced' }
 
 export interface Card {
   id: string
@@ -21,11 +32,22 @@ export interface Card {
   frontText: string
   backText: string
   createdAt: number
-  // Lightweight review history, for "hardest cards" style features or a
-  // spaced-repetition scheduler later.
+  // Lightweight review history, for "hardest cards" style features.
   reviewCount: number
   correctCount: number
   lastReviewedAt: number | null
+  // Spaced repetition state; see schedule.ts. `dueAt` is null for cards that
+  // have never been reviewed.
+  intervalDays: number
+  ease: number
+  dueAt: number | null
+}
+
+/// Cards saved before scheduling was added lack its fields.
+const newCardScheduling = { intervalDays: 0, ease: DEFAULT_EASE, dueAt: null }
+
+function withDefaults(card: Card): Card {
+  return { ...newCardScheduling, ...card }
 }
 
 interface BackhandDB extends DBSchema {
@@ -59,7 +81,7 @@ export async function initStore() {
 
 async function reload() {
   const [decks, cards] = await Promise.all([db.getAll('decks'), db.getAll('cards')])
-  setSnapshot({ decks: decks.sort(byCreatedAt), cards: cards.sort(byCreatedAt) })
+  setSnapshot({ decks: decks.sort(byCreatedAt), cards: cards.map(withDefaults).sort(byCreatedAt) })
 }
 
 function setSnapshot(next: Snapshot) {
@@ -116,13 +138,21 @@ export async function addDeck(name: string): Promise<Deck> {
   return deck
 }
 
-export async function renameDeck(id: string, name: string) {
+async function updateDeck(id: string, change: (deck: Deck) => Deck) {
   const deck = snapshot.decks.find((d) => d.id === id)
   if (!deck) return
-  const updated = { ...deck, name }
+  const updated = change(deck)
   await db.put('decks', updated)
   setSnapshot({ ...snapshot, decks: snapshot.decks.map((d) => (d.id === id ? updated : d)) })
   changed()
+}
+
+export function renameDeck(id: string, name: string) {
+  return updateDeck(id, (deck) => ({ ...deck, name }))
+}
+
+export function setReviewOptions(id: string, reviewOptions: ReviewOptions) {
+  return updateDeck(id, (deck) => ({ ...deck, reviewOptions }))
 }
 
 /// Deletes the deck and all of its cards.
@@ -158,6 +188,7 @@ export async function addCards(deckId: string, sides: { front: string; back: str
     reviewCount: 0,
     correctCount: 0,
     lastReviewedAt: null,
+    ...newCardScheduling,
   }))
   const tx = db.transaction('cards', 'readwrite')
   await Promise.all([...cards.map((card) => tx.store.put(card)), tx.done])
@@ -179,11 +210,13 @@ export function editCard(id: string, frontText: string, backText: string) {
 }
 
 export function recordReview(id: string, correct: boolean) {
+  const now = Date.now()
   return updateCard(id, (card) => ({
     ...card,
+    ...schedule(card, correct, now),
     reviewCount: card.reviewCount + 1,
     correctCount: card.correctCount + (correct ? 1 : 0),
-    lastReviewedAt: Date.now(),
+    lastReviewedAt: now,
   }))
 }
 
